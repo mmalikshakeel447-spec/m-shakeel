@@ -1,0 +1,5 @@
+{
+  "name": "Daraz Next Gadgets",
+  "description": "A web application to display and manage affiliate gadgets and electronics, inspired by the Daraz Next Gadgets design. Includes a client-side admin panel to manage products and links.",
+  "requestFramePermissions": []
+}
