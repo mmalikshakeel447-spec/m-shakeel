@@ -1,6 +1,5 @@
-
 export interface Product {
-  id: number;
+  id: string;
   name: string;
   imageUrl: string;
   affiliateUrl: string;

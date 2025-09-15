@@ -1,5 +1,4 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Header from './components/Header';
 import SearchBar from './components/SearchBar';
 import PromoButton from './components/PromoButton';
@@ -10,6 +9,8 @@ import Footer from './components/Footer';
 import AdminPanel from './components/AdminPanel';
 import { Product, SocialLink } from './types';
 import { INITIAL_SOCIAL_LINKS } from './constants';
+import { db } from './firebase';
+import { ref, onValue, set, push, remove as removeDb } from 'firebase/database';
 
 const App: React.FC = () => {
   const [headerTitle, setHeaderTitle] = useState('Daraz Next Gadgets');
@@ -19,18 +20,75 @@ const App: React.FC = () => {
   const [socialLinks, setSocialLinks] = useState<SocialLink[]>(INITIAL_SOCIAL_LINKS);
   const [isAdminPanelOpen, setIsAdminPanelOpen] = useState(false);
 
-  const addProduct = (product: Product) => {
-    setProducts(prevProducts => [...prevProducts, product]);
+  useEffect(() => {
+    // Listener for header/config data
+    const configRef = ref(db, 'config');
+    const unsubscribeConfig = onValue(configRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setHeaderTitle(data.headerTitle || 'Daraz Next Gadgets');
+        setHeaderSubtitle(data.headerSubtitle || 'Premium Gadgets & Electronics');
+        setLogoUrl(data.logoUrl || null);
+      }
+    });
+
+    // Listener for products
+    const productsRef = ref(db, 'products');
+    const unsubscribeProducts = onValue(productsRef, (snapshot) => {
+      const data = snapshot.val();
+      const productsArray: Product[] = [];
+      if (data) {
+        Object.keys(data).forEach(key => {
+          productsArray.push({ id: key, ...data[key] });
+        });
+      }
+      setProducts(productsArray);
+    });
+
+    // Listener for social links
+    const socialLinksRef = ref(db, 'socialLinks');
+    const unsubscribeSocialLinks = onValue(socialLinksRef, (snapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        setSocialLinks(data);
+      } else {
+        // If no links in DB, set the initial ones
+        set(socialLinksRef, INITIAL_SOCIAL_LINKS);
+      }
+    });
+
+    return () => {
+      unsubscribeConfig();
+      unsubscribeProducts();
+      unsubscribeSocialLinks();
+    };
+  }, []);
+
+  const handleSetHeaderTitle = (title: string) => {
+    set(ref(db, 'config/headerTitle'), title);
   };
 
-  const removeProduct = (id: number) => {
-    setProducts(prevProducts => prevProducts.filter(p => p.id !== id));
+  const handleSetHeaderSubtitle = (subtitle: string) => {
+    set(ref(db, 'config/headerSubtitle'), subtitle);
+  };
+  
+  const handleSetLogoUrl = (url: string | null) => {
+    set(ref(db, 'config/logoUrl'), url);
+  };
+
+  const addProduct = (product: Omit<Product, 'id'>) => {
+    push(ref(db, 'products'), product);
+  };
+
+  const removeProduct = (id: string) => {
+    removeDb(ref(db, `products/${id}`));
   };
 
   const updateSocialLink = (name: string, url: string) => {
-    setSocialLinks(prevLinks => 
-      prevLinks.map(link => link.name === name ? { ...link, url } : link)
-    );
+    const linkIndex = socialLinks.findIndex(link => link.name === name);
+    if (linkIndex !== -1) {
+      set(ref(db, `socialLinks/${linkIndex}/url`), url);
+    }
   };
 
   return (
@@ -80,11 +138,11 @@ const App: React.FC = () => {
       {isAdminPanelOpen && (
         <AdminPanel
           headerTitle={headerTitle}
-          setHeaderTitle={setHeaderTitle}
+          setHeaderTitle={handleSetHeaderTitle}
           headerSubtitle={headerSubtitle}
-          setHeaderSubtitle={setHeaderSubtitle}
+          setHeaderSubtitle={handleSetHeaderSubtitle}
           logoUrl={logoUrl}
-          setLogoUrl={setLogoUrl}
+          setLogoUrl={handleSetLogoUrl}
           products={products}
           addProduct={addProduct}
           removeProduct={removeProduct}

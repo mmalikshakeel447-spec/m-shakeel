@@ -9,8 +9,8 @@ interface AdminPanelProps {
   logoUrl: string | null;
   setLogoUrl: (url: string | null) => void;
   products: Product[];
-  addProduct: (product: Product) => void;
-  removeProduct: (id: number) => void;
+  addProduct: (product: Omit<Product, 'id'>) => void;
+  removeProduct: (id: string) => void;
   socialLinks: SocialLink[];
   updateSocialLink: (name: string, url: string) => void;
   onClose: () => void;
@@ -37,8 +37,7 @@ const AdminPanel: React.FC<AdminPanelProps> = ({
   const handleAddProduct = (e: React.FormEvent) => {
     e.preventDefault();
     if (newProductName && newProductImageUrl && newProductAffiliateUrl) {
-      const newProduct: Product = {
-        id: Date.now(),
+      const newProduct = {
         name: newProductName,
         imageUrl: newProductImageUrl,
         affiliateUrl: newProductAffiliateUrl,
